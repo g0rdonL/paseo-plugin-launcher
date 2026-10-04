@@ -25,6 +25,20 @@ Then:
 If a plugin is missing from the list, add it by hand under **Settings → Plugins → Plugin Launcher**
 with its plugin ID, sidebar item ID, title, and optional Lucide icon name.
 
+## Placement
+
+Choose where the launcher appears under **Settings → Plugins → Plugin Launcher → Placement**:
+
+- **Left sidebar**: the Plugins row (default).
+- **Centre tab**: a Plugins tab beside agents and terminals, from the workspace tab picker or ⌘K
+  "Plugins: open as tab".
+- **Right panel**: a Plugins panel in the Explorer, or ⌘K "Plugins: open in right panel".
+
+Any combination works and changes apply immediately. The last enabled placement can't be switched
+off, so the launcher never disappears. This moves the launcher itself; Paseo only lets a plugin
+open its own panels, so other plugins still open on their own sidebar screen. A plugin appears in
+the right panel only if it registers a workspace panel with `locations: ["explorer"]` itself.
+
 ## Notifications
 
 Any plugin can surface notifications in the launcher by writing

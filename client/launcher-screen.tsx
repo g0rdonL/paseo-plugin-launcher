@@ -7,6 +7,7 @@ import { launcherList, launcherSettings, type SidebarItem } from "../shared/laun
 import { buildPluginSidebarRoute } from "../shared/routes";
 import { getActiveInboxStore, useInbox } from "./inbox-store";
 import { InboxSources } from "./inbox-ui";
+import { PlacementSettings } from "./placement-settings";
 import { navigateToSidebarRoute } from "./web";
 
 export function LauncherScreen({ theme, layout, host }: PluginSurfaceProps) {
@@ -306,13 +307,14 @@ export function LauncherSettingsScreen({ theme, layout }: PluginSurfaceProps) {
   const save = () => {
     if (settings.status !== "ready") return;
     const cleaned = draft.filter((item) => item.pluginId && item.itemId && item.title);
-    void settings.save({ overrides: cleaned }, settings.revision);
+    void settings.save({ ...settings.values, overrides: cleaned }, settings.revision);
   };
 
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Plugin Launcher</Text>
+        <PlacementSettings />
         <Text style={styles.detail}>
           Overrides add or replace launcher entries. Leave a row's pluginId and itemId empty to
           match a plugin by id only. Save to apply.
