@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { launcherList, launcherSettings, type SidebarItem } from "../shared/launcher";
 import { buildPluginSidebarRoute } from "../shared/routes";
+import { getActiveInboxStore, useInbox } from "./inbox-store";
+import { InboxSources } from "./inbox-ui";
 import { navigateToSidebarRoute } from "./web";
 
 export function LauncherScreen({ theme, layout, host }: PluginSurfaceProps) {
@@ -13,6 +15,15 @@ export function LauncherScreen({ theme, layout, host }: PluginSurfaceProps) {
     queryKey: ["plugin-launcher", host.id],
     queryFn: () => list({}),
   });
+  const inbox = useInbox();
+  const unreadByPlugin = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const source of inbox.sources) counts.set(source.pluginId, source.notifications.length);
+    return counts;
+  }, [inbox]);
+  useEffect(() => {
+    void getActiveInboxStore()?.refresh();
+  }, []);
 
   const styles = useMemo(() => {
     const gutter = layout.compact ? 14 : 24;
@@ -77,6 +88,26 @@ export function LauncherScreen({ theme, layout, host }: PluginSurfaceProps) {
         fontWeight: "700" as const,
       },
       rowSubtitle: { color: theme.colors.foregroundMuted, fontSize: 12 },
+      badge: {
+        minWidth: 22,
+        paddingHorizontal: 7,
+        paddingVertical: 2,
+        borderRadius: 11,
+        alignItems: "center" as const,
+        backgroundColor: theme.colors.accent,
+      },
+      badgeText: {
+        color: theme.colors.accentForeground,
+        fontSize: 12,
+        fontWeight: "700" as const,
+      },
+      inbox: { marginHorizontal: gutter, marginBottom: 20, gap: 12 },
+      sectionTitle: {
+        color: theme.colors.foregroundMuted,
+        fontSize: 12,
+        fontWeight: "700" as const,
+        letterSpacing: 0.4,
+      },
       empty: {
         paddingHorizontal: gutter,
         paddingVertical: 52,
@@ -115,6 +146,12 @@ export function LauncherScreen({ theme, layout, host }: PluginSurfaceProps) {
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
+        {inbox.total > 0 ? (
+          <View style={styles.inbox}>
+            <Text style={styles.sectionTitle}>NOTIFICATIONS</Text>
+            <InboxSources sources={inbox.sources} theme={theme} hostId={host.id} />
+          </View>
+        ) : null}
         {query.isPending ? (
           <ActivityIndicator color={theme.colors.accent} style={styles.spinner} />
         ) : null}
@@ -157,6 +194,14 @@ export function LauncherScreen({ theme, layout, host }: PluginSurfaceProps) {
                 {item.pluginId}
               </Text>
             </View>
+            {unreadByPlugin.get(item.pluginId) ? (
+              <View
+                style={styles.badge}
+                accessibilityLabel={`${unreadByPlugin.get(item.pluginId)} unread`}
+              >
+                <Text style={styles.badgeText}>{unreadByPlugin.get(item.pluginId)}</Text>
+              </View>
+            ) : null}
           </Pressable>
         ))}
       </ScrollView>
