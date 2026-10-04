@@ -2,15 +2,7 @@ import { type PluginSurfaceProps, useRpc, useSettings } from "@getpaseo/plugin/c
 import { Icon } from "@getpaseo/plugin/client/react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { launcherList, launcherSettings, type SidebarItem } from "../shared/launcher";
 import { buildPluginSidebarRoute } from "../shared/routes";
 import { navigateToSidebarRoute } from "./web";
@@ -104,19 +96,6 @@ export function LauncherScreen({ theme, layout, host }: PluginSurfaceProps) {
       mutedBorder,
     };
   }, [layout.compact, theme]);
-
-  if (Platform.OS !== "web") {
-    return (
-      <View style={styles.screen}>
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Desktop only</Text>
-          <Text style={styles.emptyDetail}>
-            The plugin launcher only works inside the Paseo desktop app.
-          </Text>
-        </View>
-      </View>
-    );
-  }
 
   const items = query.data?.items ?? [];
 
