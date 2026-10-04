@@ -27,10 +27,13 @@ export function InboxBellIcon({ size, color, theme }: PluginButtonIconProps) {
   useArrivalToasts(inbox);
   const counts = countsLabel(inbox.sources);
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 3, flexShrink: 0 }}>
       <Icon name="Bell" size={size} color={counts ? theme.colors.accent : color} />
       {counts ? (
-        <Text style={{ color: theme.colors.accent, fontSize: 11, fontWeight: "700" }}>
+        <Text
+          numberOfLines={1}
+          style={{ color: theme.colors.accent, fontSize: 11, fontWeight: "700", flexShrink: 0 }}
+        >
           {counts}
         </Text>
       ) : null}
