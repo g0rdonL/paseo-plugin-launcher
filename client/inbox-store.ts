@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { InboxSource } from "../shared/inbox";
+import { formatCount, type InboxSource } from "../shared/inbox";
 
 export const INBOX_POLL_MS = 30_000;
 
@@ -20,7 +20,7 @@ export class InboxStore {
   private snapshot: InboxSnapshot = EMPTY;
   private readonly listeners = new Set<() => void>();
   private seen: Set<string> | null = null;
-  private pendingArrivals: string[] = [];
+  private pendingArrivals: Arrival[] = [];
   private timer: ReturnType<typeof setInterval> | null = null;
   private inflight: Promise<void> | null = null;
 
@@ -57,7 +57,7 @@ export class InboxStore {
   }
 
   /** Arrivals not yet announced. The first consumer takes them, so several bells toast once. */
-  takeArrivals(): string[] {
+  takeArrivals(): Arrival[] {
     const arrivals = this.pendingArrivals;
     this.pendingArrivals = [];
     return arrivals;
@@ -65,13 +65,15 @@ export class InboxStore {
 
   apply(next: InboxSnapshot): void {
     const ids = new Set<string>();
-    const arrivals: string[] = [];
+    const arrivals: Arrival[] = [];
     for (const source of next.sources) {
       for (const notification of source.notifications) {
         const key = `${source.pluginId}\u0000${notification.id}`;
         ids.add(key);
         // The first snapshot seeds what is already known; only later additions toast.
-        if (this.seen && !this.seen.has(key)) arrivals.push(notification.title);
+        if (this.seen && !this.seen.has(key)) {
+          arrivals.push({ label: source.shortLabel, title: notification.title });
+        }
       }
     }
     this.seen = ids;
@@ -86,10 +88,19 @@ function sameSnapshot(a: InboxSnapshot, b: InboxSnapshot): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function toastMessage(arrivals: string[]): string | null {
-  if (arrivals.length === 0) return null;
-  if (arrivals.length === 1) return arrivals[0] ?? null;
-  return `${arrivals.length} new notifications`;
+export interface Arrival {
+  label: string;
+  title: string;
+}
+
+/** One arrival names itself; several are counted per source, never summed. */
+export function toastMessage(arrivals: Arrival[]): string | null {
+  const [first] = arrivals;
+  if (!first) return null;
+  if (arrivals.length === 1) return `${first.label} · ${first.title}`;
+  const counts = new Map<string, number>();
+  for (const { label } of arrivals) counts.set(label, (counts.get(label) ?? 0) + 1);
+  return `New: ${[...counts].map(([label, count]) => `${label} ${formatCount(count)}`).join(" · ")}`;
 }
 
 let active: InboxStore | null = null;
