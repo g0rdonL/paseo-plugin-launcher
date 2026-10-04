@@ -1,6 +1,6 @@
 {
   "name": "paseo-plugin-launcher",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "One sidebar row that lists every installed Paseo plugin and navigates to its sidebar screen.",
   "license": "MIT",
