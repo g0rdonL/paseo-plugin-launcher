@@ -25,6 +25,30 @@ Then:
 If a plugin is missing from the list, add it by hand under **Settings → Plugins → Plugin Launcher**
 with its plugin ID, sidebar item ID, title, and optional Lucide icon name.
 
+## Notifications
+
+Any plugin can surface notifications in the launcher by writing
+`~/.paseo/plugin-inbox/<pluginId>.json` on the daemon host:
+
+```json
+{
+  "version": 1,
+  "pluginId": "pr-radar-private",
+  "itemId": "radar",
+  "title": "PR Radar",
+  "updatedAt": "2026-10-04T10:06:39Z",
+  "notifications": [
+    { "id": "PR_123:New PR", "title": "owner/repo#12 Fix login", "detail": "New PR", "url": "https://github.com/owner/repo/pull/12" }
+  ]
+}
+```
+
+The file holds the plugin's current unread notifications; the producer owns read state and rewrites
+the file (write a temp file, then rename) when it changes. `itemId` is the sidebar item the "Open"
+action navigates to. The launcher polls every 30 s and shows the unread total in the sidebar title
+("Plugins · 3"), a bell in workspace headers with the list, a toast for notifications with new ids,
+and a count next to each plugin in its list. Delete the file when the plugin stops.
+
 ## Limitations
 
 - Opening a plugin navigates to that plugin's route. On desktop this reloads the window for a
