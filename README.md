@@ -27,8 +27,8 @@ with its plugin ID, sidebar item ID, title, and optional Lucide icon name.
 
 ## Limitations
 
-- Desktop only. Opening a plugin navigates the desktop app to that plugin's route, which reloads the
-  window for a moment. The mobile app shows a "Desktop only" notice.
+- Opening a plugin navigates to that plugin's route. On desktop this reloads the window for a
+  moment; on mobile it opens the route through the `paseo://` deep link.
 - Targets Paseo 0.10.x (`>=0.10.3 <0.11.0`). Paseo 0.11 changes the sidebar API.
 - Discovery is a source scan, not a Paseo API. It finds `addSidebarItem({ id, title, icon })` calls
   with string literals or `const` string values; anything computed at runtime needs a manual entry.
