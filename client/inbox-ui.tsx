@@ -1,9 +1,13 @@
 import type { PluginTheme } from "@getpaseo/plugin";
-import type { PluginButtonContentProps, PluginButtonIconProps } from "@getpaseo/plugin/client";
+import {
+  type PluginButtonContentProps,
+  type PluginButtonIconProps,
+  useRpc,
+} from "@getpaseo/plugin/client";
 import { Icon, ScrollView, useToast } from "@getpaseo/plugin/client/react-native";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
-import type { InboxSource } from "../shared/inbox";
+import { countsLabel, type InboxSource, launcherMarkSeen } from "../shared/inbox";
 import { buildPluginSidebarRoute } from "../shared/routes";
 import { getActiveInboxStore, type InboxSnapshot, toastMessage, useInbox } from "./inbox-store";
 import { navigateToSidebarRoute } from "./web";
@@ -21,13 +25,13 @@ function useArrivalToasts(inbox: InboxSnapshot): void {
 export function InboxBellIcon({ size, color, theme }: PluginButtonIconProps) {
   const inbox = useInbox();
   useArrivalToasts(inbox);
-  const { total } = inbox;
+  const counts = countsLabel(inbox.sources);
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-      <Icon name="Bell" size={size} color={total > 0 ? theme.colors.accent : color} />
-      {total > 0 ? (
+      <Icon name="Bell" size={size} color={counts ? theme.colors.accent : color} />
+      {counts ? (
         <Text style={{ color: theme.colors.accent, fontSize: 11, fontWeight: "700" }}>
-          {total > 99 ? "99+" : total}
+          {counts}
         </Text>
       ) : null}
     </View>
@@ -66,9 +70,22 @@ export function InboxSources({
   onNavigate?: () => void;
   limitPerSource?: number;
 }) {
+  const markSeen = useRpc(launcherMarkSeen);
+  const [clearing, setClearing] = useState<string | null>(null);
+  const clear = async (pluginId: string) => {
+    setClearing(pluginId);
+    try {
+      await markSeen({ pluginId });
+      await getActiveInboxStore()?.refresh();
+    } finally {
+      setClearing(null);
+    }
+  };
   const styles = useMemo(
     () => ({
       source: { gap: 6 },
+      actions: { flexDirection: "row" as const, gap: 12 },
+      seen: { color: theme.colors.foregroundMuted, fontSize: 12, fontWeight: "600" as const },
       sourceHeader: {
         flexDirection: "row" as const,
         alignItems: "center" as const,
@@ -104,20 +121,33 @@ export function InboxSources({
               <Text style={styles.sourceTitle} numberOfLines={1}>
                 {source.title} · {source.notifications.length}
               </Text>
-              {source.itemId ? (
+              <View style={styles.actions}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Open ${source.title}`}
-                  onPress={() => {
-                    onNavigate?.();
-                    navigateToSidebarRoute(
-                      buildPluginSidebarRoute(hostId, source.pluginId, source.itemId),
-                    );
-                  }}
+                  accessibilityLabel={`Mark ${source.title} notifications seen`}
+                  accessibilityState={{ busy: clearing === source.pluginId }}
+                  disabled={clearing !== null}
+                  onPress={() => void clear(source.pluginId)}
                 >
-                  <Text style={styles.open}>Open</Text>
+                  <Text style={styles.seen}>
+                    {clearing === source.pluginId ? "Clearing…" : "Mark seen"}
+                  </Text>
                 </Pressable>
-              ) : null}
+                {source.itemId ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${source.title}`}
+                    onPress={() => {
+                      onNavigate?.();
+                      navigateToSidebarRoute(
+                        buildPluginSidebarRoute(hostId, source.pluginId, source.itemId),
+                      );
+                    }}
+                  >
+                    <Text style={styles.open}>Open</Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
             {shown.map((notification) => (
               <Pressable

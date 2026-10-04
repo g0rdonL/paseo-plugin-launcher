@@ -36,6 +36,7 @@ Any plugin can surface notifications in the launcher by writing
   "pluginId": "pr-radar-private",
   "itemId": "radar",
   "title": "PR Radar",
+  "shortLabel": "PR",
   "updatedAt": "2026-10-04T10:06:39Z",
   "notifications": [
     { "id": "PR_123:New PR", "title": "owner/repo#12 Fix login", "detail": "New PR", "url": "https://github.com/owner/repo/pull/12" }
@@ -45,9 +46,14 @@ Any plugin can surface notifications in the launcher by writing
 
 The file holds the plugin's current unread notifications; the producer owns read state and rewrites
 the file (write a temp file, then rename) when it changes. `itemId` is the sidebar item the "Open"
-action navigates to. The launcher polls every 30 s and shows the unread total in the sidebar title
-("Plugins · 3"), a bell in workspace headers with the list, a toast for notifications with new ids,
-and a count next to each plugin in its list. Delete the file when the plugin stops.
+action navigates to; `shortLabel` (up to 4 characters, default: the title's first two letters)
+labels its count. The launcher polls every 30 s and shows one count per source, never summed, in the
+sidebar title ("Plugins · PR 3 · PL 2") and in a bell in workspace headers with the list, a toast for
+notifications with new ids, and a count next to each plugin in its list. Delete the file when the
+plugin stops.
+
+"Mark seen" in the list writes the shown ids to `~/.paseo/plugin-inbox/seen/<pluginId>.json`. The
+launcher hides those ids from then on; producers may read the file to prune their own state.
 
 ## Limitations
 

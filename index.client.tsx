@@ -9,10 +9,10 @@ const WORKSPACE_SYNC_MS = 60_000;
 export default function contribute(client: PluginClientContext) {
   client.addSurface("main", LauncherScreen);
   // Paseo 0.10 sidebar rows only show a title, so the unread count lives in the title.
-  let sidebarTotal = 0;
+  let currentTitle = sidebarTitle([]);
   let removeSidebar = client.addSidebarItem({
     id: "main",
-    title: sidebarTitle(0),
+    title: currentTitle,
     icon: "Blocks",
     surface: "main",
   });
@@ -55,13 +55,14 @@ export default function contribute(client: PluginClientContext) {
   };
 
   const unsubscribe = store.subscribe(() => {
-    const { total } = store.getSnapshot();
-    if (sidebarTitle(total) !== sidebarTitle(sidebarTotal)) {
-      sidebarTotal = total;
+    const { total, sources } = store.getSnapshot();
+    const title = sidebarTitle(sources);
+    if (title !== currentTitle) {
+      currentTitle = title;
       removeSidebar();
       removeSidebar = client.addSidebarItem({
         id: "main",
-        title: sidebarTitle(total),
+        title,
         icon: "Blocks",
         surface: "main",
       });
