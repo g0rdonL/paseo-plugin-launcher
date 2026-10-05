@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { createInboxStore, type InboxSnapshot, toastMessage } from "../client/inbox-store";
 import { markSeen, resolveInbox } from "../server/inbox";
-import { countsLabel, deriveShortLabel, sidebarTitle } from "../shared/inbox";
+import { countsLabel, deriveShortLabel, formatTimestamp, sidebarTitle } from "../shared/inbox";
 
 let dir: string;
 
@@ -166,5 +166,30 @@ describe("labels", () => {
         { label: "PR", title: "c" },
       ]),
     ).toBe("New: PR 2 · PL 1");
+  });
+});
+
+describe("formatTimestamp", () => {
+  const now = Date.parse("2026-10-05T12:00:00Z");
+
+  test("is empty for missing or unparseable times", () => {
+    expect(formatTimestamp("", now)).toBe("");
+    expect(formatTimestamp("not a date", now)).toBe("");
+  });
+
+  test("is relative within the last day", () => {
+    expect(formatTimestamp("2026-10-05T11:59:30Z", now)).toBe("just now");
+    expect(formatTimestamp("2026-10-05T11:55:00Z", now)).toBe("5m ago");
+    expect(formatTimestamp("2026-10-05T09:00:00Z", now)).toBe("3h ago");
+  });
+
+  test("counts days up to a week, then shows the date", () => {
+    expect(formatTimestamp("2026-10-03T12:00:00Z", now)).toBe("2d ago");
+    expect(formatTimestamp("2026-09-20T12:00:00Z", now)).toBe("Sep 20");
+    expect(formatTimestamp("2025-09-20T12:00:00Z", now)).toBe("Sep 20, 2025");
+  });
+
+  test("treats slightly-future times as just now", () => {
+    expect(formatTimestamp("2026-10-05T12:00:20Z", now)).toBe("just now");
   });
 });
