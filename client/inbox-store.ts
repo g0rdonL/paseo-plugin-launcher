@@ -12,58 +12,32 @@ type Fetcher = () => Promise<InboxSnapshot>;
 
 const EMPTY: InboxSnapshot = { total: 0, sources: [] };
 
+export interface InboxStore {
+  getSnapshot(): InboxSnapshot;
+  subscribe(listener: () => void): () => void;
+  start(intervalMs?: number): () => void;
+  refresh(): Promise<void>;
+  /** Arrivals not yet announced. The first consumer takes them, so several bells toast once. */
+  takeArrivals(): Arrival[];
+  apply(next: InboxSnapshot): void;
+}
+
 /**
  * One poller per client entry. The daemon already caches producer data, so polling a local
  * file read every 30 s is cheap; components share the snapshot instead of polling themselves.
+ *
+ * A closure rather than a class: the mobile app runs plugin code on Hermes, which rejects
+ * `class` syntax outright (see tests/hermes.test.ts).
  */
-export class InboxStore {
-  private snapshot: InboxSnapshot = EMPTY;
-  private readonly listeners = new Set<() => void>();
-  private seen: Set<string> | null = null;
-  private pendingArrivals: Arrival[] = [];
-  private timer: ReturnType<typeof setInterval> | null = null;
-  private inflight: Promise<void> | null = null;
+export function createInboxStore(fetcher: Fetcher): InboxStore {
+  let snapshot = EMPTY;
+  const listeners = new Set<() => void>();
+  let seen: Set<string> | null = null;
+  let pendingArrivals: Arrival[] = [];
+  let timer: ReturnType<typeof setInterval> | null = null;
+  let inflight: Promise<void> | null = null;
 
-  constructor(private readonly fetcher: Fetcher) {}
-
-  getSnapshot = (): InboxSnapshot => this.snapshot;
-
-  subscribe = (listener: () => void): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  };
-
-  start(intervalMs = INBOX_POLL_MS): () => void {
-    void this.refresh();
-    this.timer = setInterval(() => void this.refresh(), intervalMs);
-    return () => {
-      if (this.timer) clearInterval(this.timer);
-      this.timer = null;
-      this.listeners.clear();
-    };
-  }
-
-  refresh(): Promise<void> {
-    if (this.inflight) return this.inflight;
-    this.inflight = this.fetcher()
-      .then((next) => this.apply(next))
-      .catch(() => {
-        // Keep the last snapshot; the next tick retries.
-      })
-      .finally(() => {
-        this.inflight = null;
-      });
-    return this.inflight;
-  }
-
-  /** Arrivals not yet announced. The first consumer takes them, so several bells toast once. */
-  takeArrivals(): Arrival[] {
-    const arrivals = this.pendingArrivals;
-    this.pendingArrivals = [];
-    return arrivals;
-  }
-
-  apply(next: InboxSnapshot): void {
+  const apply = (next: InboxSnapshot): void => {
     const ids = new Set<string>();
     const arrivals: Arrival[] = [];
     for (const source of next.sources) {
@@ -71,17 +45,56 @@ export class InboxStore {
         const key = `${source.pluginId}\u0000${notification.id}`;
         ids.add(key);
         // The first snapshot seeds what is already known; only later additions toast.
-        if (this.seen && !this.seen.has(key)) {
+        if (seen && !seen.has(key)) {
           arrivals.push({ label: source.shortLabel, title: notification.title });
         }
       }
     }
-    this.seen = ids;
-    if (arrivals.length > 0) this.pendingArrivals.push(...arrivals);
-    if (arrivals.length === 0 && sameSnapshot(this.snapshot, next)) return;
-    this.snapshot = next;
-    for (const listener of this.listeners) listener();
-  }
+    seen = ids;
+    if (arrivals.length > 0) pendingArrivals.push(...arrivals);
+    if (arrivals.length === 0 && sameSnapshot(snapshot, next)) return;
+    snapshot = next;
+    for (const listener of listeners) listener();
+  };
+
+  const refresh = (): Promise<void> => {
+    if (inflight) return inflight;
+    inflight = fetcher()
+      .then(apply)
+      .catch(() => {
+        // Keep the last snapshot; the next tick retries.
+      })
+      .finally(() => {
+        inflight = null;
+      });
+    return inflight;
+  };
+
+  return {
+    getSnapshot: () => snapshot,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    start(intervalMs = INBOX_POLL_MS) {
+      void refresh();
+      timer = setInterval(() => void refresh(), intervalMs);
+      return () => {
+        if (timer) clearInterval(timer);
+        timer = null;
+        listeners.clear();
+      };
+    },
+    refresh,
+    takeArrivals() {
+      const arrivals = pendingArrivals;
+      pendingArrivals = [];
+      return arrivals;
+    },
+    apply,
+  };
 }
 
 function sameSnapshot(a: InboxSnapshot, b: InboxSnapshot): boolean {

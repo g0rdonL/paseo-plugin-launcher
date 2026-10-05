@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { type InboxSnapshot, InboxStore, toastMessage } from "../client/inbox-store";
+import { createInboxStore, type InboxSnapshot, toastMessage } from "../client/inbox-store";
 import { markSeen, resolveInbox } from "../server/inbox";
 import { countsLabel, deriveShortLabel, sidebarTitle } from "../shared/inbox";
 
@@ -90,7 +90,7 @@ function snapshot(ids: string[]): InboxSnapshot {
 
 describe("InboxStore", () => {
   test("the first snapshot seeds silently; later additions are arrivals taken once", () => {
-    const store = new InboxStore(async () => snapshot([]));
+    const store = createInboxStore(async () => snapshot([]));
     store.apply(snapshot(["1"]));
     expect(store.takeArrivals()).toEqual([]);
 
@@ -103,7 +103,7 @@ describe("InboxStore", () => {
   });
 
   test("a notification that clears and returns announces again", () => {
-    const store = new InboxStore(async () => snapshot([]));
+    const store = createInboxStore(async () => snapshot([]));
     store.apply(snapshot(["1"]));
     store.apply(snapshot([]));
     store.apply(snapshot(["1"]));
@@ -111,7 +111,7 @@ describe("InboxStore", () => {
   });
 
   test("notifies listeners only when the snapshot changes", () => {
-    const store = new InboxStore(async () => snapshot([]));
+    const store = createInboxStore(async () => snapshot([]));
     let calls = 0;
     store.subscribe(() => {
       calls += 1;
@@ -123,7 +123,7 @@ describe("InboxStore", () => {
   });
 
   test("refresh keeps the last snapshot when the fetch fails", async () => {
-    const store = new InboxStore(async () => {
+    const store = createInboxStore(async () => {
       throw new Error("offline");
     });
     store.apply(snapshot(["1"]));
