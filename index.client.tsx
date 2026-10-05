@@ -1,5 +1,5 @@
 import type { PluginButtonRegistration, PluginClientContext } from "@getpaseo/plugin/client";
-import { InboxStore, setActiveInboxStore } from "./client/inbox-store";
+import { createInboxStore, setActiveInboxStore } from "./client/inbox-store";
 import { InboxBellIcon, InboxPopover } from "./client/inbox-ui";
 import { LauncherScreen, LauncherSettingsScreen } from "./client/launcher-screen";
 import { setPlacementApplier } from "./client/placement";
@@ -84,7 +84,7 @@ export default function contribute(client: PluginClientContext) {
     Component: LauncherSettingsScreen,
   });
 
-  const store = new InboxStore(() => client.rpc(launcherInbox, {}));
+  const store = createInboxStore(() => client.rpc(launcherInbox, {}));
   setActiveInboxStore(store);
 
   // A bell in each workspace header, shown only while something is unread.
