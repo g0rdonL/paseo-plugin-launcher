@@ -79,3 +79,23 @@ export function sidebarTitle(sources: Pick<InboxSource, "shortLabel" | "notifica
   const counts = countsLabel(sources);
   return counts ? `Plugins · ${counts}` : "Plugins";
 }
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "5m ago" within a week, then "Sep 20" (with the year once it differs); "" if unknown. */
+export function formatTimestamp(createdAt: string, now: number = Date.now()): string {
+  const time = Date.parse(createdAt);
+  if (!createdAt || Number.isNaN(time)) return "";
+  const minutes = Math.floor((now - time) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const date = new Date(time);
+  const label = `${MONTHS[date.getMonth()]} ${date.getDate()}`;
+  return date.getFullYear() === new Date(now).getFullYear()
+    ? label
+    : `${label}, ${date.getFullYear()}`;
+}

@@ -7,7 +7,7 @@ import {
 import { Icon, ScrollView, useToast } from "@getpaseo/plugin/client/react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
-import { countsLabel, type InboxSource, launcherMarkSeen } from "../shared/inbox";
+import { countsLabel, formatTimestamp, type InboxSource, launcherMarkSeen } from "../shared/inbox";
 import { buildPluginSidebarRoute } from "../shared/routes";
 import { getActiveInboxStore, type InboxSnapshot, toastMessage, useInbox } from "./inbox-store";
 import { navigateToSidebarRoute } from "./web";
@@ -75,6 +75,12 @@ export function InboxSources({
 }) {
   const markSeen = useRpc(launcherMarkSeen);
   const [clearing, setClearing] = useState<string | null>(null);
+  // Re-render each minute so relative times ("5m ago") don't go stale.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
   const clear = async (pluginId: string) => {
     setClearing(pluginId);
     try {
@@ -105,7 +111,9 @@ export function InboxSources({
         gap: 2,
       },
       itemPressed: { opacity: 0.7 },
-      itemTitle: { color: theme.colors.foreground, fontSize: 13 },
+      itemHeader: { flexDirection: "row" as const, alignItems: "flex-start" as const, gap: 8 },
+      itemTitle: { color: theme.colors.foreground, fontSize: 13, flexShrink: 1, flexGrow: 1 },
+      itemTime: { color: theme.colors.foregroundMuted, fontSize: 11, flexShrink: 0, marginTop: 2 },
       itemDetail: { color: theme.colors.foregroundMuted, fontSize: 11 },
       more: { color: theme.colors.foregroundMuted, fontSize: 11 },
     }),
@@ -160,9 +168,16 @@ export function InboxSources({
                 onPress={() => void Linking.openURL(notification.url).catch(() => {})}
                 style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
               >
-                <Text style={styles.itemTitle} numberOfLines={2}>
-                  {notification.title}
-                </Text>
+                <View style={styles.itemHeader}>
+                  <Text style={styles.itemTitle} numberOfLines={2}>
+                    {notification.title}
+                  </Text>
+                  {notification.createdAt ? (
+                    <Text style={styles.itemTime} numberOfLines={1}>
+                      {formatTimestamp(notification.createdAt, now)}
+                    </Text>
+                  ) : null}
+                </View>
                 {notification.detail ? (
                   <Text style={styles.itemDetail} numberOfLines={2}>
                     {notification.detail}
